@@ -45,9 +45,113 @@ TASKS_TO_RUN=""
 QUIET_MODE=false
 SILENT_MODE=false
 LOG_DESTINATION="/var/log/disk_cleanup.log"
+INTERACTIVE_MODE=true
+IGNORE_PATHS=""
+CONFIG_FILE="${HOME}/.config/yacdc/yacdc_ignore.conf"
+
+# Try to use /var/log, fall back to user's home on permission errors
+if [ ! -w "/var/log" ] && [ ! -w "$LOG_DESTINATION" ]; then
+    LOG_DESTINATION="${HOME}/.local/log/disk_cleanup.log"
+    mkdir -p "$(dirname "$LOG_DESTINATION")" 2>/dev/null || true
+fi
 
 # ============================================================================
 # UTILITY FUNCTIONS
+# ============================================================================
+
+load_ignore_config() {
+    if [ -f "$CONFIG_FILE" ]; then
+        log "Loading ignore configuration from $CONFIG_FILE"
+        while IFS= read -r line || [ -n "$line" ]; do
+            # Skip empty lines and comments
+            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+            # Expand ~ to home directory
+            line="${line/#\~/$HOME}"
+            if [ -n "$IGNORE_PATHS" ]; then
+                IGNORE_PATHS="$IGNORE_PATHS:$line"
+            else
+                IGNORE_PATHS="$line"
+            fi
+        done < "$CONFIG_FILE"
+    fi
+}
+
+is_ignored() {
+    local path="$1"
+    local expanded_path="${path/#\~/$HOME}"
+    
+    if [ -z "$IGNORE_PATHS" ]; then
+        return 1  # false - not ignored
+    fi
+    
+    IFS=':' read -ra IGNORE_ARRAY <<< "$IGNORE_PATHS"
+    for ignore_pattern in "${IGNORE_ARRAY[@]}"; do
+        # Expand ~ in ignore pattern
+        ignore_pattern="${ignore_pattern/#\~/$HOME}"
+        
+        # Check if path matches ignore pattern
+        if [[ "$expanded_path" == "$ignore_pattern"* ]] || [[ "$expanded_path" == "$ignore_pattern" ]]; then
+            return 0  # true - ignored
+        fi
+    done
+    
+    return 1  # false - not ignored
+}
+
+confirm_action() {
+    local message="$1"
+    
+    # Skip confirmation in non-interactive modes
+    if [ "$INTERACTIVE_MODE" = false ] || [ "$QUIET_MODE" = true ] || [ "$SILENT_MODE" = true ]; then
+        return 0  # proceed
+    fi
+    
+    echo ""
+    echo "$message"
+    read -p "Proceed? [y/N] " -n 1 -r
+    echo ""
+    
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        return 0  # proceed
+    else
+        log "Skipped by user"
+        return 1  # skip
+    fi
+}
+
+show_paths_to_clean() {
+    local description="$1"
+    shift
+    local paths=("$@")
+    
+    if [ "$INTERACTIVE_MODE" = false ] || [ "$QUIET_MODE" = true ] || [ "$SILENT_MODE" = true ]; then
+        return
+    fi
+    
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📂 $description"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    local count=0
+    local ignored_count=0
+    
+    for path in "${paths[@]}"; do
+        if is_ignored "$path"; then
+            echo "  ⊗ $path (ignored)"
+            ((ignored_count++))
+        else
+            echo "  ✓ $path"
+            ((count++))
+        fi
+    done
+    
+    echo ""
+    echo "Items to clean: $count"
+    [ $ignored_count -gt 0 ] && echo "Ignored items: $ignored_count"
+}
+
+# ============================================================================
+# ORIGINAL UTILITY FUNCTIONS
 # ============================================================================
 
 log() {
@@ -232,9 +336,33 @@ clean_macos_system_caches() {
 
 clean_macos_user_caches() {
     log_section "Cleaning user caches..."
-    if [ -d ~/Library/Caches ]; then
-        find ~/Library/Caches -type f -atime +${DAYS_TO_KEEP} -delete 2>> "$LOG_DESTINATION" || true
-        log "User caches cleaned"
+    local cache_dir=~/Library/Caches
+    
+    if [ ! -d "$cache_dir" ]; then
+        log "Cache directory not found, skipping"
+        return
+    fi
+    
+    # Collect paths to clean
+    local paths=()
+    while IFS= read -r -d '' file; do
+        if ! is_ignored "$file"; then
+            paths+=("$file")
+        fi
+    done < <(find "$cache_dir" -type f -atime +${DAYS_TO_KEEP} -print0 2>/dev/null)
+    
+    if [ ${#paths[@]} -eq 0 ]; then
+        log "No cache files older than ${DAYS_TO_KEEP} days found"
+        return
+    fi
+    
+    show_paths_to_clean "User Cache Files (older than ${DAYS_TO_KEEP} days)" "${paths[@]}"
+    
+    if confirm_action "Clean ${#paths[@]} user cache files?"; then
+        for file in "${paths[@]}"; do
+            rm -f "$file" 2>> "$LOG_DESTINATION" || true
+        done
+        log "User caches cleaned (${#paths[@]} files)"
     fi
 }
 
@@ -264,17 +392,66 @@ clean_macos_temp_files() {
 
 clean_macos_trash() {
     log_section "Emptying trash..."
-    if [ -d ~/.Trash ]; then
-        rm -rf ~/.Trash/* 2>> "$LOG_DESTINATION" || true
-        log "Trash emptied"
+    local trash_dir=~/.Trash
+    
+    if [ ! -d "$trash_dir" ]; then
+        log "Trash directory not found, skipping"
+        return
+    fi
+    
+    # Collect trash items
+    local paths=()
+    for item in "$trash_dir"/*; do
+        [ -e "$item" ] || continue
+        if ! is_ignored "$item"; then
+            paths+=("$item")
+        fi
+    done
+    
+    if [ ${#paths[@]} -eq 0 ]; then
+        log "Trash is empty"
+        return
+    fi
+    
+    show_paths_to_clean "Trash Items" "${paths[@]}"
+    
+    if confirm_action "Empty trash (${#paths[@]} items)?"; then
+        for item in "${paths[@]}"; do
+            rm -rf "$item" 2>> "$LOG_DESTINATION" || true
+        done
+        log "Trash emptied (${#paths[@]} items)"
     fi
 }
 
 clean_macos_downloads() {
     log_section "Cleaning old downloads (older than ${DAYS_TO_KEEP} days)..."
-    if [ -d ~/Downloads ]; then
-        find ~/Downloads -type f -atime +${DAYS_TO_KEEP} -delete 2>> "$LOG_DESTINATION" || true
-        log "Old downloads cleaned"
+    local downloads_dir=~/Downloads
+    
+    if [ ! -d "$downloads_dir" ]; then
+        log "Downloads directory not found, skipping"
+        return
+    fi
+    
+    # Collect old downloads
+    local paths=()
+    while IFS= read -r -d '' file; do
+        if ! is_ignored "$file"; then
+            paths+=("$file")
+        fi
+    done < <(find "$downloads_dir" -type f -atime +${DAYS_TO_KEEP} -print0 2>/dev/null)
+    
+    if [ ${#paths[@]} -eq 0 ]; then
+        log "No downloads older than ${DAYS_TO_KEEP} days found"
+        return
+    fi
+    
+    show_paths_to_clean "Old Downloads (older than ${DAYS_TO_KEEP} days)" "${paths[@]}"
+    
+    if confirm_action "Delete ${#paths[@]} old downloads?"; then
+        for file in "${paths[@]}"; do
+            rm -f "$file" 2>> "$LOG_DESTINATION" || true
+        done
+        log "Old downloads cleaned (${#paths[@]} files)"
     fi
 }
 
@@ -302,9 +479,33 @@ clean_macos_homebrew() {
 clean_macos_xcode_derived() {
     log_section "Cleaning Xcode DerivedData..."
     local derived_data=~/Library/Developer/Xcode/DerivedData
-    if [ -d "$derived_data" ]; then
-        rm -rf "$derived_data"/* 2>> "$LOG_DESTINATION" || true
-        log "Xcode DerivedData cleaned"
+    
+    if [ ! -d "$derived_data" ]; then
+        log "Xcode DerivedData not found, skipping"
+        return
+    fi
+    
+    # Collect derived data folders
+    local paths=()
+    for item in "$derived_data"/*; do
+        [ -e "$item" ] || continue
+        if ! is_ignored "$item"; then
+            paths+=("$item")
+        fi
+    done
+    
+    if [ ${#paths[@]} -eq 0 ]; then
+        log "No DerivedData found"
+        return
+    fi
+    
+    show_paths_to_clean "Xcode DerivedData Folders" "${paths[@]}"
+    
+    if confirm_action "Delete ${#paths[@]} DerivedData folders?"; then
+        for item in "${paths[@]}"; do
+            rm -rf "$item" 2>> "$LOG_DESTINATION" || true
+        done
+        log "Xcode DerivedData cleaned (${#paths[@]} folders)"
     fi
 }
 
@@ -364,8 +565,27 @@ Options:
   -q, --quiet                  Quiet mode: no stdout, only stderr for errors (for cron)
   -Q, --silent                 Silent mode: no stdout, no stderr (completely silent)
   -L, --log DEST               Log destination: 'syslog' or file path (default: /var/log/disk_cleanup.log)
+  -i, --ignore PATH            Ignore specific paths (can be used multiple times)
+                               Example: --ignore ~/Documents --ignore ~/Photos
+                               Paths can use ~ for home directory
+  -y, --yes, --non-interactive Non-interactive mode: skip all confirmations (for automation)
   -h, --help                   Show this help message
   --dry-run                    Show what would be cleaned without actually cleaning
+
+Interactive Mode:
+  By default, the script runs in INTERACTIVE mode and will:
+  - Show paths to be cleaned before each task
+  - Ask for confirmation before proceeding
+  - Respect ignore patterns from command line and config file
+  
+  Use -y/--yes/--non-interactive to skip confirmations (useful for cron jobs)
+
+Ignore Configuration:
+  Create ~/.config/yacdc/yacdc_ignore.conf with patterns to ignore:
+    # One path per line, comments with #
+    ~/Documents/important
+    ~/Downloads/keep-this-file.txt
+    ~/Library/Caches/com.important.app
 
 Task names for --skip and --tasks (use comma-separated list):
   
@@ -503,6 +723,18 @@ parse_arguments() {
                 LOG_DESTINATION="$2"
                 shift 2
                 ;;
+            -i|--ignore)
+                if [ -n "$IGNORE_PATHS" ]; then
+                    IGNORE_PATHS="$IGNORE_PATHS:$2"
+                else
+                    IGNORE_PATHS="$2"
+                fi
+                shift 2
+                ;;
+            -y|--yes|--non-interactive)
+                INTERACTIVE_MODE=false
+                shift
+                ;;
             -h|--help)
                 show_help
                 ;;
@@ -580,6 +812,7 @@ validate_arguments() {
 main() {
     parse_arguments "$@"
     validate_arguments
+    load_ignore_config
 
     # Check OS compatibility
     if [ "$OS_TYPE" = "unknown" ]; then

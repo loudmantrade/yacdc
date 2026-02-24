@@ -1,0 +1,68 @@
+# YACDC Ignore Configuration File
+# Place this file at: ~/.config/yacdc/yacdc_ignore.conf
+#
+# One path per line
+# Lines starting with # are comments
+# Use ~ for home directory (will be expanded automatically)
+# Paths are checked with prefix matching
+
+# =============================================================================
+# DOCUMENTS AND IMPORTANT FILES
+# =============================================================================
+
+# Keep important documents
+~/Documents/important
+~/Documents/work
+
+# Keep specific files in Downloads
+~/Downloads/important-installer.dmg
+~/Downloads/keep
+
+# =============================================================================
+# DEVELOPMENT
+# =============================================================================
+
+# Keep specific Xcode projects in DerivedData
+~/Library/Developer/Xcode/DerivedData/MyImportantProject
+
+# Keep specific Homebrew caches
+~/Library/Caches/Homebrew/downloads/important-package
+
+# =============================================================================
+# CACHES
+# =============================================================================
+
+# Don't clean specific app caches
+~/Library/Caches/com.important.app
+~/Library/Caches/com.mycompany.critical
+
+# =============================================================================
+# SYSTEM
+# =============================================================================
+
+# Keep specific logs
+/var/log/important-service.log
+
+# Keep specific temp files
+/tmp/keep-this
+
+# =============================================================================
+# iOS BACKUPS
+# =============================================================================
+
+# Keep specific device backup (use device UDID from backup folder name)
+# ~/Library/Application Support/MobileSync/Backup/00000000-0000000000000000
+
+# =============================================================================
+# MAIL
+# =============================================================================
+
+# Keep specific mail attachments
+~/Library/Mail Downloads/important-attachment.pdf
+
+# =============================================================================
+# TRASH
+# =============================================================================
+
+# Don't empty specific items from trash (use full path in trash)
+~/.Trash/important-file-to-restore.txt
