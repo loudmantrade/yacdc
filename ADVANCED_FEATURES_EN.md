@@ -1,4 +1,4 @@
-# Advanced Features of disk_cleanup.sh
+# Advanced Features of yacdc
 
 ## Updated: February 24, 2026
 
@@ -210,7 +210,7 @@ All parameters are validated:
 
 **Validation example:**
 ```bash
-$ disk_cleanup.sh -d abc --max-journal-size invalid --dry-run
+$ yacdc -d abc --max-journal-size invalid --dry-run
 Error: Invalid number of days: abc
 Using default (7 days).
 Warning: Invalid journal size format: invalid
@@ -223,63 +223,63 @@ Using default (500M). Format should be like: 100M, 1G, etc.
 ### Scenario 1: Workstation (frequently powered on/off)
 ```bash
 # Conservative cleanup, don't touch kernels
-disk_cleanup.sh -d 30 --skip kernels
+yacdc -d 30 --skip kernels
 ```
 
 ### Scenario 2: Server with limited space
 ```bash
 # Aggressive cleanup
-disk_cleanup.sh -d 3 -s 50 -l 5000 -j 200M
+yacdc -d 3 -s 50 -l 5000 -j 200M
 ```
 
 ### Scenario 3: Development server
 ```bash
 # Medium cleanup, skip long operations
-disk_cleanup.sh -d 14 --skip kernels,packages
+yacdc -d 14 --skip kernels,packages
 ```
 
 ### Scenario 4: Production server
 ```bash
 # Safe cleanup with large buffers
-disk_cleanup.sh -d 30 -j 2G -s 200 --skip kernels
+yacdc -d 30 -j 2G -s 200 --skip kernels
 ```
 
 ### Scenario 5: Testing new settings
 ```bash
 # First dry-run
-disk_cleanup.sh -d 7 -s 30 --dry-run
+yacdc -d 7 -s 30 --dry-run
 # If OK, run it
-disk_cleanup.sh -d 7 -s 30
+yacdc -d 7 -s 30
 ```
 
 ### Scenario 6: Quick cleanup of specific tasks
 ```bash
 # Clean only journals and apt cache (fast, no package/kernel removal)
-disk_cleanup.sh -T journals,apt
+yacdc -T journals,apt
 
 # Clean only snap-related tasks
-disk_cleanup.sh --tasks snap-revisions,snap-cache
+yacdc --tasks snap-revisions,snap-cache
 ```
 
 ### Scenario 7: Combining -T and -S for precise control
 ```bash
 # Execute journals and oldlogs (exclude apt from list)
-disk_cleanup.sh -T journals,oldlogs,apt -S apt
+yacdc -T journals,oldlogs,apt -S apt
 
 # Execute several tasks but exclude some (e.g., for testing)
-disk_cleanup.sh -T journals,apt,temp,packages -S packages
+yacdc -T journals,apt,temp,packages -S packages
 
 # All except one task (e.g., all snap except cache)
-disk_cleanup.sh -T snap-revisions,snap-cache -S snap-cache
+yacdc -T snap-revisions,snap-cache -S snap-cache
 ```
 
 ### Scenario 8: Cron with quiet mode
 ```bash
 # Quiet mode with syslog (perfect for cron)
-0 3 * * * root /usr/local/bin/disk_cleanup.sh -q -L syslog
+0 3 * * * root /usr/local/bin/yacdc -q -L syslog
 
 # Silent mode with custom parameters
-0 3 * * * root /usr/local/bin/disk_cleanup.sh -Q -d 14 -S kernels
+0 3 * * * root /usr/local/bin/yacdc -Q -d 14 -S kernels
 ```
 
 ## Internal Changes

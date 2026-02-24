@@ -6,7 +6,7 @@ Conflicts=shutdown.target reboot.target halt.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/disk_cleanup.sh
+ExecStart=/usr/local/bin/yacdc
 TimeoutStartSec=180
 StandardOutput=journal
 StandardError=journal

@@ -44,12 +44,12 @@ For automation (cron jobs, scripts), use non-interactive mode:
 
 ```bash
 # Skip all confirmations
-./disk_cleanup.sh -y
-./disk_cleanup.sh --yes
-./disk_cleanup.sh --non-interactive
+./yacdc -y
+./yacdc --yes
+./yacdc --non-interactive
 
 # Combine with quiet mode for cron
-./disk_cleanup.sh -y -q
+./yacdc -y -q
 ```
 
 ## Ignore Patterns
@@ -60,13 +60,13 @@ Use `-i` or `--ignore` to specify paths to ignore:
 
 ```bash
 # Single path
-./disk_cleanup.sh -i ~/Documents/important
+./yacdc -i ~/Documents/important
 
 # Multiple paths (use flag multiple times)
-./disk_cleanup.sh -i ~/Documents/work -i ~/Downloads/keep-this.dmg
+./yacdc -i ~/Documents/work -i ~/Downloads/keep-this.dmg
 
 # Use ~ for home directory
-./disk_cleanup.sh -i ~/Photos -i ~/Library/Caches/com.myapp
+./yacdc -i ~/Photos -i ~/Library/Caches/com.myapp
 ```
 
 ### Configuration File
@@ -135,7 +135,7 @@ This will ignore:
 
 ```bash
 # Use both config and command-line ignores
-./disk_cleanup.sh -i ~/Downloads/new-important.zip
+./yacdc -i ~/Downloads/new-important.zip
 
 # This will ignore:
 # - Everything in ~/.config/yacdc/yacdc_ignore.conf
@@ -148,43 +148,43 @@ This will ignore:
 
 ```bash
 # Run with default settings, confirm each step
-./disk_cleanup.sh
+./yacdc
 
 # Preview what would be cleaned
-./disk_cleanup.sh --dry-run
+./yacdc --dry-run
 
 # Clean only specific tasks, interactively
-./disk_cleanup.sh -T user-caches,trash
+./yacdc -T user-caches,trash
 ```
 
 ### Automated Cleanup (Cron)
 
 ```bash
 # Non-interactive, quiet mode, log to file
-./disk_cleanup.sh -y -q -L ~/cleanup.log
+./yacdc -y -q -L ~/cleanup.log
 
 # Clean specific tasks automatically
-./disk_cleanup.sh -y -q -T user-caches,temp,homebrew
+./yacdc -y -q -T user-caches,temp,homebrew
 ```
 
 ### Protected Cleanup
 
 ```bash
 # Ignore specific paths during cleanup
-./disk_cleanup.sh -i ~/Documents/active-project -i ~/Downloads/installer.dmg
+./yacdc -i ~/Documents/active-project -i ~/Downloads/installer.dmg
 
 # Clean everything except certain apps
-./disk_cleanup.sh -i ~/Library/Caches/com.app1 -i ~/Library/Caches/com.app2
+./yacdc -i ~/Library/Caches/com.app1 -i ~/Library/Caches/com.app2
 ```
 
 ### Dry-Run Before Real Cleanup
 
 ```bash
 # Step 1: See what would be cleaned
-./disk_cleanup.sh --dry-run -T trash,downloads
+./yacdc --dry-run -T trash,downloads
 
 # Step 2: If satisfied, run for real
-./disk_cleanup.sh -T trash,downloads
+./yacdc -T trash,downloads
 
 # Each task will show files and ask for confirmation
 ```
@@ -253,14 +253,14 @@ nano ~/.config/yacdc/yacdc_ignore.conf
 
 ```bash
 # Interactive + dry-run + ignore patterns
-./disk_cleanup.sh --dry-run -i ~/Documents -i ~/Photos
+./yacdc --dry-run -i ~/Documents -i ~/Photos
 ```
 
 ### Selective Automated Cleanup
 
 ```bash
 # Only safe tasks, non-interactive, with protections
-./disk_cleanup.sh -y -q \
+./yacdc -y -q \
   -T temp,user-caches \
   -i ~/Library/Caches/com.important.app \
   -L ~/.local/log/cleanup.log
@@ -270,7 +270,7 @@ nano ~/.config/yacdc/yacdc_ignore.conf
 
 ```bash
 # Safe daily cleanup with confirmations
-./disk_cleanup.sh -d 30 -T temp,user-caches,trash
+./yacdc -d 30 -T temp,user-caches,trash
 # Will ask before cleaning each category
 ```
 
@@ -339,12 +339,12 @@ ls -la ~/.config/yacdc/yacdc_ignore.conf
 
 Use non-interactive mode:
 ```bash
-./disk_cleanup.sh -y
+./yacdc -y
 ```
 
 Or clean only specific tasks:
 ```bash
-./disk_cleanup.sh -T user-caches
+./yacdc -T user-caches
 ```
 
 ## Version

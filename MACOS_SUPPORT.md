@@ -53,40 +53,40 @@ The script automatically detects your operating system and executes the appropri
 
 **Run with default settings (7 days):**
 ```bash
-./disk_cleanup.sh
+./yacdc
 ```
 
 **Preview mode (dry-run):**
 ```bash
-./disk_cleanup.sh --dry-run
+./yacdc --dry-run
 ```
 
 **Custom retention period:**
 ```bash
-./disk_cleanup.sh -d 14              # Keep logs for 14 days
-./disk_cleanup.sh --days 30          # Keep logs for 30 days
+./yacdc -d 14              # Keep logs for 14 days
+./yacdc --days 30          # Keep logs for 30 days
 ```
 
 ### Selective Cleanup
 
 **Clean only user data:**
 ```bash
-./disk_cleanup.sh -T user-caches,user-logs,trash,downloads
+./yacdc -T user-caches,user-logs,trash,downloads
 ```
 
 **Clean only developer tools:**
 ```bash
-./disk_cleanup.sh -T homebrew,xcode-derived,ios-simulators
+./yacdc -T homebrew,xcode-derived,ios-simulators
 ```
 
 **Clean everything except trash and downloads:**
 ```bash
-./disk_cleanup.sh -S trash,downloads
+./yacdc -S trash,downloads
 ```
 
 **Combine tasks and skip:**
 ```bash
-./disk_cleanup.sh -T user-caches,homebrew,trash -S homebrew
+./yacdc -T user-caches,homebrew,trash -S homebrew
 # This will clean only: user-caches and trash
 ```
 
@@ -94,19 +94,19 @@ The script automatically detects your operating system and executes the appropri
 
 **Change download retention:**
 ```bash
-./disk_cleanup.sh -d 30              # Delete downloads older than 30 days
+./yacdc -d 30              # Delete downloads older than 30 days
 ```
 
 **Quiet mode (for cron/scheduled tasks):**
 ```bash
-./disk_cleanup.sh -q                 # No stdout, errors to stderr
-./disk_cleanup.sh -Q                 # Completely silent
+./yacdc -q                 # No stdout, errors to stderr
+./yacdc -Q                 # Completely silent
 ```
 
 **Custom log destination:**
 ```bash
-./disk_cleanup.sh -L ~/cleanup.log   # Log to custom file
-./disk_cleanup.sh -L syslog          # Log to system log
+./yacdc -L ~/cleanup.log   # Log to custom file
+./yacdc -L syslog          # Log to system log
 ```
 
 ## Installation on macOS
@@ -115,13 +115,13 @@ The script automatically detects your operating system and executes the appropri
 
 1. **Download the script:**
    ```bash
-   curl -O https://raw.githubusercontent.com/loudmantrade/yacdc/main/disk_cleanup.sh
-   chmod +x disk_cleanup.sh
+   curl -O https://raw.githubusercontent.com/loudmantrade/yacdc/main/yacdc
+   chmod +x yacdc
    ```
 
 2. **Move to system location:**
    ```bash
-   sudo mv disk_cleanup.sh /usr/local/bin/disk_cleanup
+   sudo mv yacdc /usr/local/bin/yacdc
    ```
 
 3. **Create log directory:**
@@ -140,12 +140,12 @@ crontab -e
 
 **Add daily cleanup at 3 AM:**
 ```
-0 3 * * * /usr/local/bin/disk_cleanup -q >> /var/log/disk_cleanup.log 2>&1
+0 3 * * * /usr/local/bin/yacdc -q >> /var/log/disk_cleanup.log 2>&1
 ```
 
 **Weekly cleanup on Sunday at 4 AM:**
 ```
-0 4 * * 0 /usr/local/bin/disk_cleanup -q >> /var/log/disk_cleanup.log 2>&1
+0 4 * * 0 /usr/local/bin/yacdc -q >> /var/log/disk_cleanup.log 2>&1
 ```
 
 #### Using LaunchAgent (macOS preferred method)
@@ -165,7 +165,7 @@ sudo nano /Library/LaunchDaemons/com.yacdc.cleanup.plist
     <string>com.yacdc.cleanup</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/local/bin/disk_cleanup</string>
+        <string>/usr/local/bin/yacdc</string>
         <string>-q</string>
     </array>
     <key>StartCalendarInterval</key>
@@ -204,7 +204,7 @@ Some tasks require elevated privileges:
 
 **Run with sudo for full functionality:**
 ```bash
-sudo ./disk_cleanup.sh
+sudo ./yacdc
 ```
 
 ## Differences from Linux Version
@@ -225,7 +225,7 @@ sudo ./disk_cleanup.sh
 
 Run with sudo:
 ```bash
-sudo ./disk_cleanup.sh
+sudo ./yacdc
 ```
 
 ### Homebrew Not Found
@@ -248,22 +248,22 @@ After cleaning font cache, you may need to restart applications or log out/in.
 
 **Developer workstation cleanup:**
 ```bash
-sudo ./disk_cleanup.sh -T homebrew,xcode-derived,ios-simulators,user-caches
+sudo ./yacdc -T homebrew,xcode-derived,ios-simulators,user-caches
 ```
 
 **Light cleanup (safe for daily use):**
 ```bash
-./disk_cleanup.sh -T temp,user-caches,trash
+./yacdc -T temp,user-caches,trash
 ```
 
 **Aggressive cleanup (monthly):**
 ```bash
-sudo ./disk_cleanup.sh -d 3
+sudo ./yacdc -d 3
 ```
 
 **Preview before cleanup:**
 ```bash
-sudo ./disk_cleanup.sh --dry-run
+sudo ./yacdc --dry-run
 ```
 
 ## Support

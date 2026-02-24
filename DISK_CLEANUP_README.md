@@ -2,7 +2,7 @@
 
 ## Установленный скрипт
 
-**Расположение:** `/usr/local/bin/disk_cleanup.sh`
+**Расположение:** `/usr/local/bin/yacdc`
 
 **Расписание:** 
 - **Ежедневно:** Каждый день в 3:00 утра (через cron)
@@ -39,19 +39,19 @@
 - `-q/--quiet`: только лог-файл, ошибки в stderr (идеально для cron)
 - `-Q/--silent`: только лог-файл, никакого консольного вывода
 
-**Использование:** `/usr/local/bin/disk_cleanup.sh [OPTIONS]`
+**Использование:** `/usr/local/bin/yacdc [OPTIONS]`
 
 **Быстрые примеры:**
 ```bash
-disk_cleanup.sh                           # Дефолт
-disk_cleanup.sh -d 14                     # 14 дней
-disk_cleanup.sh -d 3 -s 50                # Агрессивно
-disk_cleanup.sh -S apt,kernels            # Без APT и ядер
-disk_cleanup.sh -T journals,oldlogs       # Только журналы и логи
-disk_cleanup.sh -T journals,apt -S apt    # Только journals (исключая apt)
-disk_cleanup.sh -q                        # Тихий режим (для cron)
-disk_cleanup.sh -q -L syslog              # Тихий режим с syslog
-disk_cleanup.sh --dry-run                 # Предпросмотр
+yacdc                           # Дефолт
+yacdc -d 14                     # 14 дней
+yacdc -d 3 -s 50                # Агрессивно
+yacdc -S apt,kernels            # Без APT и ядер
+yacdc -T journals,oldlogs       # Только журналы и логи
+yacdc -T journals,apt -S apt    # Только journals (исключая apt)
+yacdc -q                        # Тихий режим (для cron)
+yacdc -q -L syslog              # Тихий режим с syslog
+yacdc --dry-run                 # Предпросмотр
 ```
 
 **Что очищается:**
@@ -70,25 +70,25 @@ disk_cleanup.sh --dry-run                 # Предпросмотр
 
 ### Показать справку
 ```bash
-ssh len "sudo /usr/local/bin/disk_cleanup.sh --help"
+ssh len "sudo /usr/local/bin/yacdc --help"
 ```
 
 ### Базовые примеры
 
 **Запуск с дефолтными настройками (7 дней)**
 ```bash
-ssh len "sudo /usr/local/bin/disk_cleanup.sh"
+ssh len "sudo /usr/local/bin/yacdc"
 ```
 
 **Кастомный период хранения логов**
 ```bash
-ssh len "sudo /usr/local/bin/disk_cleanup.sh -d 14"
-ssh len "sudo /usr/local/bin/disk_cleanup.sh --days 14"
+ssh len "sudo /usr/local/bin/yacdc -d 14"
+ssh len "sudo /usr/local/bin/yacdc --days 14"
 ```
 
 **Предварительный просмотр (dry-run)**
 ```bash
-ssh len "sudo /usr/local/bin/disk_cleanup.sh --dry-run"
+ssh len "sudo /usr/local/bin/yacdc --dry-run"
 ```
 
 ### Продвинутые опции
@@ -96,7 +96,7 @@ ssh len "sudo /usr/local/bin/disk_cleanup.sh --dry-run"
 **Настройка размера журналов**
 ```bash
 # Разрешить журналы до 1GB вместо 500MB
-ssh len "sudo /usr/local/bin/disk_cleanup.sh --max-journal-size 1G"
+ssh len "sudo /usr/local/bin/yacdc --max-journal-size 1G"
 ```
 
 **Настройка очистки миниатюр**

@@ -11,7 +11,7 @@ The script automatically detects your operating system and runs appropriate clea
 
 ## Installed Script
 
-**Location:** `/usr/local/bin/disk_cleanup.sh`
+**Location:** `/usr/local/bin/yacdc`
 
 **Schedule:** 
 - **Daily:** Every day at 3:00 AM (via cron)
@@ -46,19 +46,19 @@ Example: `-T journals,apt,temp -S apt` → executes only `journals` and `temp`
 - `-q/--quiet`: only log file, errors to stderr (perfect for cron)
 - `-Q/--silent`: only log file, no console output
 
-**Usage:** `/usr/local/bin/disk_cleanup.sh [OPTIONS]`
+**Usage:** `/usr/local/bin/yacdc [OPTIONS]`
 
 **Quick Examples:**
 ```bash
-disk_cleanup.sh                           # Default
-disk_cleanup.sh -d 14                     # 14 days
-disk_cleanup.sh -d 3 -s 50                # Aggressive
-disk_cleanup.sh -S apt,kernels            # Skip APT and kernels
-disk_cleanup.sh -T journals,oldlogs       # Only journals and logs
-disk_cleanup.sh -T journals,apt -S apt    # Only journals (excluding apt)
-disk_cleanup.sh -q                        # Quiet mode (for cron)
-disk_cleanup.sh -q -L syslog              # Quiet mode with syslog
-disk_cleanup.sh --dry-run                 # Preview
+yacdc                           # Default
+yacdc -d 14                     # 14 days
+yacdc -d 3 -s 50                # Aggressive
+yacdc -S apt,kernels            # Skip APT and kernels
+yacdc -T journals,oldlogs       # Only journals and logs
+yacdc -T journals,apt -S apt    # Only journals (excluding apt)
+yacdc -q                        # Quiet mode (for cron)
+yacdc -q -L syslog              # Quiet mode with syslog
+yacdc --dry-run                 # Preview
 ```
 
 **What Gets Cleaned:**
@@ -77,20 +77,20 @@ disk_cleanup.sh --dry-run                 # Preview
 
 ### Show Help
 ```bash
-ssh len "sudo /usr/local/bin/disk_cleanup.sh --help"
+ssh len "sudo /usr/local/bin/yacdc --help"
 ```
 
 ### Basic Examples
 
 **Run with default settings (7 days)**
 ```bash
-ssh len "sudo /usr/local/bin/disk_cleanup.sh"
+ssh len "sudo /usr/local/bin/yacdc"
 ```
 
 **Custom log retention period**
 ```bash
-ssh len "sudo /usr/local/bin/disk_cleanup.sh -d 14"
-ssh len "sudo /usr/local/bin/disk_cleanup.sh --days 14"
+ssh len "sudo /usr/local/bin/yacdc -d 14"
+ssh len "sudo /usr/local/bin/yacdc --days 14"
 ```
 
 **Preview mode (dry-run)**

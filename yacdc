@@ -1,7 +1,7 @@
 #!/bin/bash
 # Automated disk cleanup script
 # Runs daily to free up disk space
-# Usage: disk_cleanup.sh [OPTIONS]
+# Usage: yacdc [OPTIONS]
 # Default: 7 days
 # Supports: Linux (Ubuntu/Debian) and macOS
 

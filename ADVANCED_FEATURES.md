@@ -1,4 +1,4 @@
-# Расширенные возможности disk_cleanup.sh
+# Расширенные возможности yacdc
 
 ## Дата обновления: 24 февраля 2026 г.
 
@@ -187,7 +187,7 @@ Tasks that would be executed:
 
 **Пример валидации:**
 ```bash
-$ disk_cleanup.sh -d abc --max-journal-size invalid --dry-run
+$ yacdc -d abc --max-journal-size invalid --dry-run
 Error: Invalid number of days: abc
 Using default (7 days).
 Warning: Invalid journal size format: invalid
@@ -200,54 +200,54 @@ Using default (500M). Format should be like: 100M, 1G, etc.
 ### Сценарий 1: Рабочая станция (часто включается/выключается)
 ```bash
 # Консервативная очистка, не трогать ядра
-disk_cleanup.sh -d 30 --skip kernels
+yacdc -d 30 --skip kernels
 ```
 
 ### Сценарий 2: Сервер с ограниченным местом
 ```bash
 # Агрессивная очистка
-disk_cleanup.sh -d 3 -s 50 -l 5000 -j 200M
+yacdc -d 3 -s 50 -l 5000 -j 200M
 ```
 
 ### Сценарий 3: Сервер разработки
 ```bash
 # Средняя очистка, пропустить долгие операции
-disk_cleanup.sh -d 14 --skip kernels,packages
+yacdc -d 14 --skip kernels,packages
 ```
 
 ### Сценарий 4: Производственный сервер
 ```bash
 # Безопасная очистка с большими буферами
-disk_cleanup.sh -d 30 -j 2G -s 200 --skip kernels
+yacdc -d 30 -j 2G -s 200 --skip kernels
 ```
 
 ### Сценарий 5: Тестирование новых настроек
 ```bash
 # Сначала dry-run
-disk_cleanup.sh -d 7 -s 30 --dry-run
+yacdc -d 7 -s 30 --dry-run
 # Если все ок, запустить
-disk_cleanup.sh -d 7 -s 30
+yacdc -d 7 -s 30
 ```
 
 ### Сценарий 6: Быстрая очистка конкретных задач
 ```bash
 # Очистить только журналы и apt-кэш (быстро без удаления пакетов/ядер)
-disk_cleanup.sh -T journals,apt
+yacdc -T journals,apt
 
 # Очистить только snap-связанные задачи
-disk_cleanup.sh --tasks snap-revisions,snap-cache
+yacdc --tasks snap-revisions,snap-cache
 ```
 
 ### Сценарий 7: Комбинирование -T и -S для точного контроля
 ```bash
 # Выполнить journals и oldlogs (исключить apt из списка)
-disk_cleanup.sh -T journals,oldlogs,apt -S apt
+yacdc -T journals,oldlogs,apt -S apt
 
 # Выполнить несколько задач, но исключить некоторые (например, для тестирования)
-disk_cleanup.sh -T journals,apt,temp,packages -S packages
+yacdc -T journals,apt,temp,packages -S packages
 
 # Все кроме одной задачи (например, все snap кроме cache)
-disk_cleanup.sh -T snap-revisions,snap-cache -S snap-cache
+yacdc -T snap-revisions,snap-cache -S snap-cache
 ```
 
 ## Внутренние изменения
