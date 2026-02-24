@@ -3,8 +3,29 @@
 # Runs daily to free up disk space
 # Usage: disk_cleanup.sh [OPTIONS]
 # Default: 7 days
+# Supports: Linux (Ubuntu/Debian) and macOS
 
 set -uo pipefail
+
+# ============================================================================
+# OS DETECTION
+# ============================================================================
+
+detect_os() {
+    case "$(uname -s)" in
+        Darwin*)
+            echo "macos"
+            ;;
+        Linux*)
+            echo "linux"
+            ;;
+        *)
+            echo "unknown"
+            ;;
+    esac
+}
+
+readonly OS_TYPE=$(detect_os)
 
 # ============================================================================
 # CONFIGURATION
@@ -110,20 +131,20 @@ should_skip_task() {
 
 clean_systemd_journals() {
     log_section "Cleaning systemd journals..."
-    journalctl --vacuum-time=${DAYS_TO_KEEP}d >> "$LOG_FILE" 2>&1 || true
-    journalctl --vacuum-size=$MAX_JOURNAL_SIZE >> "$LOG_FILE" 2>&1 || true
+    journalctl --vacuum-time=${DAYS_TO_KEEP}d >> "$LOG_DESTINATION" 2>&1 || true
+    journalctl --vacuum-size=$MAX_JOURNAL_SIZE >> "$LOG_DESTINATION" 2>&1 || true
 }
 
 clean_old_log_files() {
     log_section "Removing old log files..."
     find /var/log -type f \( -name '*.gz' -o -name '*.1' -o -name '*.old' \) \
-        -mtime +${DAYS_TO_KEEP} -delete 2>> "$LOG_FILE" || true
+        -mtime +${DAYS_TO_KEEP} -delete 2>> "$LOG_DESTINATION" || true
 }
 
 clean_apt_cache() {
     log_section "Cleaning APT cache..."
-    apt-get clean >> "$LOG_FILE" 2>&1 || true
-    apt-get autoclean >> "$LOG_FILE" 2>&1 || true
+    apt-get clean >> "$LOG_DESTINATION" 2>&1 || true
+    apt-get autoclean >> "$LOG_DESTINATION" 2>&1 || true
 }
 
 remove_old_kernels() {
@@ -136,14 +157,14 @@ remove_old_kernels() {
             local kernel_count=$(dpkg -l 'linux-image-[0-9]*' 2>/dev/null | grep '^ii' | wc -l)
             if [ "$kernel_count" -gt 2 ]; then
                 log "Removing old kernel: $kernel"
-                apt-get remove --purge -y "$kernel" >> "$LOG_FILE" 2>&1 || true
+                apt-get remove --purge -y "$kernel" >> "$LOG_DESTINATION" 2>&1 || true
             fi
         done || true
 }
 
 remove_unused_packages() {
     log_section "Removing unused packages..."
-    apt-get autoremove -y >> "$LOG_FILE" 2>&1 || true
+    apt-get autoremove -y >> "$LOG_DESTINATION" 2>&1 || true
 }
 
 clean_snap_revisions() {
@@ -151,7 +172,7 @@ clean_snap_revisions() {
     snap list --all 2>/dev/null | awk '/disabled/{print $1, $3}' | \
         while read snapname revision; do
             log "Removing snap: $snapname (revision $revision)"
-            snap remove "$snapname" --revision="$revision" >> "$LOG_FILE" 2>&1 || true
+            snap remove "$snapname" --revision="$revision" >> "$LOG_DESTINATION" 2>&1 || true
         done || true
 }
 
@@ -166,13 +187,13 @@ clean_snap_cache() {
 clean_thumbnail_cache() {
     log_section "Cleaning thumbnail caches..."
     find /home/*/.cache/thumbnails -type f -atime +${THUMBNAIL_MAX_AGE} \
-        -delete 2>> "$LOG_FILE" || true
+        -delete 2>> "$LOG_DESTINATION" || true
 }
 
 clean_temp_files() {
     log_section "Cleaning old temporary files..."
-    find /tmp -type f -atime +${DAYS_TO_KEEP} -delete 2>> "$LOG_FILE" || true
-    find /var/tmp -type f -atime +${DAYS_TO_KEEP} -delete 2>> "$LOG_FILE" || true
+    find /tmp -type f -atime +${DAYS_TO_KEEP} -delete 2>> "$LOG_DESTINATION" || true
+    find /var/tmp -type f -atime +${DAYS_TO_KEEP} -delete 2>> "$LOG_DESTINATION" || true
 }
 
 truncate_large_logs() {
@@ -195,6 +216,128 @@ cleanup_own_log() {
         tail -n $LOG_TRUNCATE_LINES "$LOG_DESTINATION" > "$LOG_DESTINATION.tmp" && \
             mv "$LOG_DESTINATION.tmp" "$LOG_DESTINATION"
     fi
+}
+
+# ============================================================================
+# MACOS CLEANUP FUNCTIONS
+# ============================================================================
+
+clean_macos_system_caches() {
+    log_section "Cleaning system caches..."
+    if [ -d /Library/Caches ]; then
+        find /Library/Caches -type f -atime +${DAYS_TO_KEEP} -delete 2>> "$LOG_DESTINATION" || true
+        log "System caches cleaned"
+    fi
+}
+
+clean_macos_user_caches() {
+    log_section "Cleaning user caches..."
+    if [ -d ~/Library/Caches ]; then
+        find ~/Library/Caches -type f -atime +${DAYS_TO_KEEP} -delete 2>> "$LOG_DESTINATION" || true
+        log "User caches cleaned"
+    fi
+}
+
+clean_macos_system_logs() {
+    log_section "Cleaning system logs..."
+    if [ -d /var/log ]; then
+        find /var/log -type f \( -name '*.log.*' -o -name '*.gz' \) -mtime +${DAYS_TO_KEEP} \
+            -delete 2>> "$LOG_DESTINATION" || true
+        log "System logs cleaned"
+    fi
+}
+
+clean_macos_user_logs() {
+    log_section "Cleaning user logs..."
+    if [ -d ~/Library/Logs ]; then
+        find ~/Library/Logs -type f -mtime +${DAYS_TO_KEEP} -delete 2>> "$LOG_DESTINATION" || true
+        log "User logs cleaned"
+    fi
+}
+
+clean_macos_temp_files() {
+    log_section "Cleaning temporary files..."
+    find /tmp -type f -atime +${DAYS_TO_KEEP} -delete 2>> "$LOG_DESTINATION" || true
+    find /var/tmp -type f -atime +${DAYS_TO_KEEP} -delete 2>> "$LOG_DESTINATION" || true
+    [ -d /private/tmp ] && find /private/tmp -type f -atime +${DAYS_TO_KEEP} -delete 2>> "$LOG_DESTINATION" || true
+}
+
+clean_macos_trash() {
+    log_section "Emptying trash..."
+    if [ -d ~/.Trash ]; then
+        rm -rf ~/.Trash/* 2>> "$LOG_DESTINATION" || true
+        log "Trash emptied"
+    fi
+}
+
+clean_macos_downloads() {
+    log_section "Cleaning old downloads (older than ${DAYS_TO_KEEP} days)..."
+    if [ -d ~/Downloads ]; then
+        find ~/Downloads -type f -atime +${DAYS_TO_KEEP} -delete 2>> "$LOG_DESTINATION" || true
+        log "Old downloads cleaned"
+    fi
+}
+
+clean_macos_mail_downloads() {
+    log_section "Cleaning Mail downloads..."
+    local mail_downloads=~/Library/"Mail Downloads"
+    if [ -d "$mail_downloads" ]; then
+        find "$mail_downloads" -type f -atime +${DAYS_TO_KEEP} -delete 2>> "$LOG_DESTINATION" || true
+        log "Mail downloads cleaned"
+    fi
+}
+
+clean_macos_homebrew() {
+    log_section "Cleaning Homebrew cache..."
+    if command -v brew &> /dev/null; then
+        brew cleanup -s >> "$LOG_DESTINATION" 2>&1 || true
+        brew autoremove >> "$LOG_DESTINATION" 2>&1 || true
+        rm -rf ~/Library/Caches/Homebrew/* 2>> "$LOG_DESTINATION" || true
+        log "Homebrew cache cleaned"
+    else
+        log "Homebrew not installed, skipping"
+    fi
+}
+
+clean_macos_xcode_derived() {
+    log_section "Cleaning Xcode DerivedData..."
+    local derived_data=~/Library/Developer/Xcode/DerivedData
+    if [ -d "$derived_data" ]; then
+        rm -rf "$derived_data"/* 2>> "$LOG_DESTINATION" || true
+        log "Xcode DerivedData cleaned"
+    fi
+}
+
+clean_macos_ios_backups() {
+    log_section "Cleaning old iOS device backups (older than ${DAYS_TO_KEEP} days)..."
+    local backup_dir=~/Library/Application\ Support/MobileSync/Backup
+    if [ -d "$backup_dir" ]; then
+        find "$backup_dir" -type d -mindepth 1 -maxdepth 1 -mtime +${DAYS_TO_KEEP} \
+            -exec rm -rf {} \; 2>> "$LOG_DESTINATION" || true
+        log "Old iOS backups cleaned"
+    fi
+}
+
+clean_macos_ios_simulators() {
+    log_section "Cleaning iOS simulator caches..."
+    local sim_cache=~/Library/Developer/CoreSimulator/Caches
+    if [ -d "$sim_cache" ]; then
+        rm -rf "$sim_cache"/* 2>> "$LOG_DESTINATION" || true
+        log "iOS simulator caches cleaned"
+    fi
+}
+
+clean_macos_dns_cache() {
+    log_section "Flushing DNS cache..."
+    sudo dscacheutil -flushcache >> "$LOG_DESTINATION" 2>&1 || true
+    sudo killall -HUP mDNSResponder >> "$LOG_DESTINATION" 2>&1 || true
+    log "DNS cache flushed"
+}
+
+clean_macos_font_cache() {
+    log_section "Cleaning font caches..."
+    sudo atsutil databases -remove >> "$LOG_DESTINATION" 2>&1 || true
+    log "Font cache cleaned"
 }
 
 # ============================================================================
@@ -225,6 +368,8 @@ Options:
   --dry-run                    Show what would be cleaned without actually cleaning
 
 Task names for --skip and --tasks (use comma-separated list):
+  
+  Linux tasks:
   journals        - systemd journal cleanup
   oldlogs         - compressed/rotated logs cleanup
   apt             - APT cache cleanup
@@ -235,6 +380,22 @@ Task names for --skip and --tasks (use comma-separated list):
   thumbnails      - thumbnail cache cleanup
   temp            - temporary files cleanup
   truncate        - large log files truncation
+
+  macOS tasks:
+  system-caches   - system caches cleanup (/Library/Caches)
+  user-caches     - user caches cleanup (~/Library/Caches)
+  system-logs     - system logs cleanup (/var/log)
+  user-logs       - user logs cleanup (~/Library/Logs)
+  temp            - temporary files cleanup (/tmp, /var/tmp)
+  trash           - empty trash (~/.Trash)
+  downloads       - old downloads cleanup (~/Downloads)
+  mail-downloads  - Mail attachments cleanup
+  homebrew        - Homebrew cache cleanup
+  xcode-derived   - Xcode DerivedData cleanup
+  ios-backups     - old iOS device backups cleanup
+  ios-simulators  - iOS simulator caches cleanup
+  dns-cache       - flush DNS cache
+  font-cache      - font cache cleanup
 
 Examples:
   Basic usage:
@@ -420,6 +581,13 @@ main() {
     parse_arguments "$@"
     validate_arguments
 
+    # Check OS compatibility
+    if [ "$OS_TYPE" = "unknown" ]; then
+        log_error "Unsupported operating system: $(uname -s)"
+        log_error "This script supports Linux and macOS only"
+        exit 1
+    fi
+
     if [ "$DRY_RUN" = true ]; then
         # Dry-run output respects quiet/silent modes
         if [ "$SILENT_MODE" = false ] && [ "$QUIET_MODE" = false ]; then
@@ -427,6 +595,7 @@ main() {
             echo "DRY RUN MODE - No actual cleanup will be performed"
             echo "========================================"
             echo ""
+            echo "Operating System: $OS_TYPE"
             echo "Configuration:"
             echo "  Days to keep logs: $DAYS_TO_KEEP"
             echo "  Max journal size: $MAX_JOURNAL_SIZE"
@@ -439,16 +608,35 @@ main() {
             [ "$QUIET_MODE" = true ] && echo "  Output mode: QUIET"
             echo ""
             echo "Tasks that would be executed:"
-            should_skip_task "journals" || echo "  ✓ Clean systemd journals"
-            should_skip_task "oldlogs" || echo "  ✓ Remove old log files"
-            should_skip_task "apt" || echo "  ✓ Clean APT cache"
-            should_skip_task "kernels" || echo "  ✓ Remove old kernels"
-            should_skip_task "packages" || echo "  ✓ Remove unused packages"
-            should_skip_task "snap-revisions" || echo "  ✓ Clean snap revisions"
-            should_skip_task "snap-cache" || echo "  ✓ Clean snap cache"
-            should_skip_task "thumbnails" || echo "  ✓ Clean thumbnail cache"
-            should_skip_task "temp" || echo "  ✓ Clean temporary files"
-            should_skip_task "truncate" || echo "  ✓ Truncate large log files"
+            
+            if [ "$OS_TYPE" = "linux" ]; then
+                should_skip_task "journals" || echo "  ✓ Clean systemd journals"
+                should_skip_task "oldlogs" || echo "  ✓ Remove old log files"
+                should_skip_task "apt" || echo "  ✓ Clean APT cache"
+                should_skip_task "kernels" || echo "  ✓ Remove old kernels"
+                should_skip_task "packages" || echo "  ✓ Remove unused packages"
+                should_skip_task "snap-revisions" || echo "  ✓ Clean snap revisions"
+                should_skip_task "snap-cache" || echo "  ✓ Clean snap cache"
+                should_skip_task "thumbnails" || echo "  ✓ Clean thumbnail cache"
+                should_skip_task "temp" || echo "  ✓ Clean temporary files"
+                should_skip_task "truncate" || echo "  ✓ Truncate large log files"
+            elif [ "$OS_TYPE" = "macos" ]; then
+                should_skip_task "system-caches" || echo "  ✓ Clean system caches"
+                should_skip_task "user-caches" || echo "  ✓ Clean user caches"
+                should_skip_task "system-logs" || echo "  ✓ Clean system logs"
+                should_skip_task "user-logs" || echo "  ✓ Clean user logs"
+                should_skip_task "temp" || echo "  ✓ Clean temporary files"
+                should_skip_task "trash" || echo "  ✓ Empty trash"
+                should_skip_task "downloads" || echo "  ✓ Clean old downloads"
+                should_skip_task "mail-downloads" || echo "  ✓ Clean Mail downloads"
+                should_skip_task "homebrew" || echo "  ✓ Clean Homebrew cache"
+                should_skip_task "xcode-derived" || echo "  ✓ Clean Xcode DerivedData"
+                should_skip_task "ios-backups" || echo "  ✓ Clean old iOS backups"
+                should_skip_task "ios-simulators" || echo "  ✓ Clean iOS simulator caches"
+                should_skip_task "dns-cache" || echo "  ✓ Flush DNS cache"
+                should_skip_task "font-cache" || echo "  ✓ Clean font cache"
+            fi
+            
             echo ""
             echo "========================================"
         fi
@@ -458,23 +646,40 @@ main() {
     local date_start=$(date '+%Y-%m-%d %H:%M:%S')
     
     log "========================================"
-    log "[$date_start] Starting disk cleanup (keeping logs for $DAYS_TO_KEEP days)..."
+    log "[$date_start] Starting disk cleanup on $OS_TYPE (keeping logs for $DAYS_TO_KEEP days)..."
     [ -n "$TASKS_TO_RUN" ] && log "Executing ONLY tasks: $TASKS_TO_RUN"
     [ -n "$SKIP_TASKS" ] && log "Skipping tasks: $SKIP_TASKS"
     
     show_disk_usage "Disk usage before cleanup"
     
-    # Execute cleanup tasks (skip if requested)
-    should_skip_task "journals" || clean_systemd_journals
-    should_skip_task "oldlogs" || clean_old_log_files
-    should_skip_task "apt" || clean_apt_cache
-    should_skip_task "kernels" || remove_old_kernels
-    should_skip_task "packages" || remove_unused_packages
-    should_skip_task "snap-revisions" || clean_snap_revisions
-    should_skip_task "snap-cache" || clean_snap_cache
-    should_skip_task "thumbnails" || clean_thumbnail_cache
-    should_skip_task "temp" || clean_temp_files
-    should_skip_task "truncate" || truncate_large_logs
+    # Execute cleanup tasks based on OS
+    if [ "$OS_TYPE" = "linux" ]; then
+        should_skip_task "journals" || clean_systemd_journals
+        should_skip_task "oldlogs" || clean_old_log_files
+        should_skip_task "apt" || clean_apt_cache
+        should_skip_task "kernels" || remove_old_kernels
+        should_skip_task "packages" || remove_unused_packages
+        should_skip_task "snap-revisions" || clean_snap_revisions
+        should_skip_task "snap-cache" || clean_snap_cache
+        should_skip_task "thumbnails" || clean_thumbnail_cache
+        should_skip_task "temp" || clean_temp_files
+        should_skip_task "truncate" || truncate_large_logs
+    elif [ "$OS_TYPE" = "macos" ]; then
+        should_skip_task "system-caches" || clean_macos_system_caches
+        should_skip_task "user-caches" || clean_macos_user_caches
+        should_skip_task "system-logs" || clean_macos_system_logs
+        should_skip_task "user-logs" || clean_macos_user_logs
+        should_skip_task "temp" || clean_macos_temp_files
+        should_skip_task "trash" || clean_macos_trash
+        should_skip_task "downloads" || clean_macos_downloads
+        should_skip_task "mail-downloads" || clean_macos_mail_downloads
+        should_skip_task "homebrew" || clean_macos_homebrew
+        should_skip_task "xcode-derived" || clean_macos_xcode_derived
+        should_skip_task "ios-backups" || clean_macos_ios_backups
+        should_skip_task "ios-simulators" || clean_macos_ios_simulators
+        should_skip_task "dns-cache" || clean_macos_dns_cache
+        should_skip_task "font-cache" || clean_macos_font_cache
+    fi
     
     show_disk_usage "Disk usage after cleanup"
     
