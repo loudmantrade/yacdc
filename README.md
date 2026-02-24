@@ -1,4 +1,13 @@
-# Automated Disk Cleanup for Server len
+# Automated Disk Cleanup for Servers
+
+## Supported Platforms
+
+- ✅ **Linux** (Ubuntu/Debian) - Full support
+- ✅ **macOS** - Full support (see [macOS Support Guide](MACOS_SUPPORT.md))
+
+The script automatically detects your operating system and runs appropriate cleanup tasks.
+
+## For Linux (Server len)
 
 ## Installed Script
 
